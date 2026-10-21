@@ -117,7 +117,8 @@ d'heures sous le seuil, début et fin de la suite (dans la limite des prix connu
 
 Se déclenche une fois par jour, quand Red Eléctrica publie les prix du lendemain
 (vers 20 h 15). Variables : prix moyen, minimum et maximum de demain, l'heure la
-moins chère et la plus chère, et le début des 3 heures les moins chères.
+moins chère et la plus chère, et le début des 3 heures les moins chères. Des prix
+découverts après 23 h (Madrid), à l'installation par exemple, ne sont pas annoncés.
 
 Les déclencheurs horaires partent au début de l'heure, avec 10 minutes de retard au
 plus (redémarrage de Gladys ou de l'intégration) : une heure commencée depuis plus

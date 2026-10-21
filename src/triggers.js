@@ -138,7 +138,7 @@ export function tomorrowEvent(tomorrowSlots, timeZone) {
       cheapest_time: marketTime(summary.min.start, timeZone),
       max_price: roundPrice(summary.max.price),
       priciest_time: marketTime(summary.max.start, timeZone),
-      cheapest_3h_start: window ? marketTime(window.start, timeZone) : null,
+      cheapest_3h_start: window ? marketTime(window.start, timeZone) : '',
     },
   };
 }

@@ -123,6 +123,13 @@ export const TEXT = {
     de: 'Gegen 20:15',
     es: 'Hacia las 20:15',
   },
+  // The same moment in the Canary Islands, an hour behind Madrid.
+  tomorrowPendingCanary: {
+    en: 'Around 19:15',
+    fr: 'Vers 19:15',
+    de: 'Gegen 19:15',
+    es: 'Hacia las 19:15',
+  },
   period: { en: 'Period', fr: 'Période', de: 'Zeitraum', es: 'Periodo' },
   caption: {
     en: 'PVPC 2.0TD, energy term, taxes excluded',

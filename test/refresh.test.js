@@ -155,3 +155,21 @@ test("the core's onPoll runs a cycle only when the timer missed one", async () =
   assert.deepEqual(await world.gladys.fake.poll(device), { success: true });
   assert.equal(world.api.requests.length, before + 1, 'the stalled timer is replaced');
 });
+
+test('a changed zone is read at once, even during a backoff', async () => {
+  const world = await createWorld();
+  world.api.down = true;
+  world.clock.advance(61 * MINUTE);
+  await world.app.cycle();
+  world.api.down = false;
+  const before = world.api.count();
+  await world.gladys.fake.configUpdated({ zone: 'ceuta' });
+  assert.equal(world.api.count(), before + 1);
+  assert.equal(world.api.requests.at(-1).url.searchParams.get('geo_limit'), 'ceuta');
+});
+
+test('a poll before the configuration is loaded runs nothing', async () => {
+  const world = await createWorld({ connect: false });
+  await world.gladys.fake.poll(buildDevice(world.gladys, normalizeConfig()));
+  assert.equal(world.api.count(), 0);
+});

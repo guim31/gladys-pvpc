@@ -186,3 +186,16 @@ test("tomorrow's prices: one event when they appear, never twice", async () => {
   );
   assert.equal(tomorrowEvent([]), null);
 });
+
+test("tomorrow's prices first seen late at night are recorded, not announced", async () => {
+  const world = await createWorld({ at: '2026-10-20T21:50:00Z' }); // 23:50
+  assert.equal(
+    world.gladys.fake.sceneEvents.filter((e) => e.key === TRIGGER.TOMORROW_PUBLISHED).length,
+    0,
+  );
+  const restarted = await createWorld({ at: '2026-10-20T21:55:00Z', dataDir: world.dataDir });
+  assert.equal(
+    restarted.gladys.fake.sceneEvents.filter((e) => e.key === TRIGGER.TOMORROW_PUBLISHED).length,
+    0,
+  );
+});

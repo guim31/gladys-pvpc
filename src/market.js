@@ -54,15 +54,17 @@ export function createMarket({ fetch = globalThis.fetch, now = () => Date.now() 
 
   /** Whether a refresh is due at `at`, and why (for the debug log). */
   function dueReason(at, { zone }) {
+    // Another zone is another series: no backoff delays it (an empty
+    // snapshot until then).
+    if (lastSuccessAt !== null && zone !== fetchedZone) {
+      return 'zone changed';
+    }
     if (lastAttemptAt !== null && failures > 0) {
       const wait = FAILURE_BACKOFF_MS[Math.min(failures, FAILURE_BACKOFF_MS.length) - 1];
       return at - lastAttemptAt >= wait ? 'retry after a failure' : null;
     }
     if (lastSuccessAt === null) {
       return 'first refresh';
-    }
-    if (zone !== fetchedZone) {
-      return 'zone changed';
     }
     if (at - lastSuccessAt >= REFRESH_MS) {
       return 'hourly refresh';

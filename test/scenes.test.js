@@ -83,3 +83,34 @@ test('unknown fields fail the action, the scene carries on', async () => {
   });
   assert.equal(deadline.success, false);
 });
+
+test('the deadline is the next HH:00, even within the hour in progress', async () => {
+  // 06:30, tomorrow not published: "before 07:00" leaves no whole hour.
+  const early = await createWorld({ at: '2026-10-20T04:30:00Z', until: '2026-10-20T22:00:00Z' });
+  assert.equal((await run(early, { hours: '1', before: '07:00' })).found, false);
+  // 15:20, "before 16:00": the 15:00 hour began too long ago, nothing fits.
+  const afternoon = await createWorld({ at: '2026-10-20T13:20:00Z' });
+  assert.equal((await run(afternoon, { hours: '1', before: '16:00' })).found, false);
+  // 15:20, "before 18:00": 16:00-17:00 at the latest.
+  const fits = await run(afternoon, { hours: '1', before: '18:00' });
+  assert.deepEqual([fits.start_time, fits.end_time], ['16:00', '17:00']);
+});
+
+test('the deadline in the clock of the zone, and over a skipped DST hour', async () => {
+  const { nextDeadline } = await import('../src/scenes.js');
+  const at = new Date('2026-10-20T13:20:00Z'); // 15:20 Madrid, 14:20 Las Palmas
+  assert.equal(
+    new Date(nextDeadline(at, '16:00', 'Europe/Madrid')).toISOString(),
+    '2026-10-20T14:00:00.000Z',
+  );
+  assert.equal(
+    new Date(nextDeadline(at, '16:00', 'Atlantic/Canary')).toISOString(),
+    '2026-10-20T15:00:00.000Z',
+  );
+  // 29 March 2026: 02:00 does not exist in Madrid, 03:00 CEST stands for it.
+  const spring = new Date('2026-03-28T23:30:00Z'); // 00:30 CET
+  assert.equal(
+    new Date(nextDeadline(spring, '02:00', 'Europe/Madrid')).toISOString(),
+    '2026-03-29T01:00:00.000Z',
+  );
+});

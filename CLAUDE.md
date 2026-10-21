@@ -106,7 +106,9 @@ test/fixtures/ree/                real REE answers (two days, both DST days, a 5
 - Déclencheurs : mêmes règles qu'EnergyZero (`select` obligatoire, un événement par valeur concernée, rien après
   10 min, `/data/scene-events.json`). `price_below_started` ne part qu'au **franchissement** (l'heure d'avant au-
   dessus du seuil ; d'où la lecture d'hier pour minuit). `tomorrow_prices_published` part une fois par jour,
-  mémorisé dans le même fichier (`announced_day`).
+  mémorisé dans le même fichier (`announced_day`), et jamais après 23 h (Madrid) : découverts plus tard,
+  les prix sont notés sans annonce. `onPoll` ne fait rien avant le chargement de la config et du registre
+  (sinon double envoi après redémarrage).
 - Action de scène : sorties toujours toutes présentes (`found: false` sinon) ; heure limite = prochaine
   occurrence de `HH:00` dans l'horloge de la zone parmi les fins de créneau connues.
 

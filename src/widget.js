@@ -156,7 +156,7 @@ export function buildPricesContent({ snapshot, language }) {
   } else {
     items.push({
       label: t(TEXT.tomorrow),
-      value: t(TEXT.tomorrowPending),
+      value: t(snapshot.zone === 'canarias' ? TEXT.tomorrowPendingCanary : TEXT.tomorrowPending),
       icon: 'clock',
       color: WIDGET_COLORS.NEUTRAL,
     });

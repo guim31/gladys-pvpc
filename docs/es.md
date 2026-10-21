@@ -117,7 +117,8 @@ precio de la hora, número de horas por debajo del umbral, inicio y fin de la se
 
 Se dispara una vez al día, cuando Red Eléctrica publica los precios de mañana
 (hacia las 20:15). Variables: precio medio, mínimo y máximo de mañana, la hora más
-barata y la más cara, y el inicio de las 3 horas más baratas.
+barata y la más cara, y el inicio de las 3 horas más baratas. Los precios
+descubiertos después de las 23:00 (Madrid), por ejemplo al instalar, no se anuncian.
 
 Los disparadores horarios saltan al empezar la hora, con 10 minutos de retraso como
 máximo (reinicio de Gladys o de la integración): una hora que empezó hace más tiempo

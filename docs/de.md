@@ -118,6 +118,8 @@ sind).
 Löst einmal am Tag aus, wenn Red Eléctrica die Preise für morgen veröffentlicht
 (gegen 20:15 Uhr). Variablen: Durchschnitts-, Tiefst- und Höchstpreis von morgen,
 die günstigste und die teuerste Stunde und der Beginn der günstigsten 3 Stunden.
+Preise, die erst nach 23 Uhr (Madrid) entdeckt werden, etwa bei der Installation,
+werden nicht angekündigt.
 
 Die stündlichen Auslöser feuern, wenn die Stunde beginnt, höchstens 10 Minuten zu
 spät (Neustart von Gladys oder der Integration): Eine Stunde, die schon länger

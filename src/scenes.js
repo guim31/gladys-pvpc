@@ -11,12 +11,12 @@
 // minutes (STARTED_GRACE_MS): a window that began at 14:00 is no longer
 // whole at 14:40. It must end before the deadline, the next HH:00 of the
 // zone's clock, and lie within the known prices (today and, after about
-// 20:15, tomorrow): when the deadline is beyond them, the known hours are
-// searched.
+// 20:15, tomorrow): only when the deadline is beyond them are all the known
+// hours searched. A deadline too close for the run gives found: false.
 // -----------------------------------------------------------------------------
 
 import { cheapestWindow, roundPrice } from './prices.js';
-import { marketTime, zoneTimezone } from './time.js';
+import { marketHour, marketTime, zoneTimezone } from './time.js';
 
 export const SCENE_ACTION = { CHEAPEST_WINDOW: 'find_cheapest_window' };
 
@@ -41,6 +41,33 @@ const NOT_FOUND = {
 };
 
 /**
+ * The next instant after `at` when the clock of `timeZone` shows `before`
+ * (`HH:00`). Every zone is a whole number of hours from UTC, so the full UTC
+ * hours are the candidates. On the day the clocks go forward, an hour that
+ * does not exist (02:00 in Madrid) becomes the first hour after it.
+ * @param {Date} at
+ * @param {string} before `HH:00`
+ * @param {string} timeZone
+ * @returns {number} ms
+ */
+export function nextDeadline(at, before, timeZone) {
+  const target = Number(before.slice(0, 2));
+  const HOUR = 60 * MINUTE;
+  let previous = marketHour(at, timeZone);
+  let instant = Math.floor(at.getTime() / HOUR) * HOUR;
+  for (let step = 0; step < 50; step += 1) {
+    instant += HOUR;
+    const hour = marketHour(new Date(instant), timeZone);
+    const skipped = previous < target && hour > target;
+    if (hour === target || skipped) {
+      return instant;
+    }
+    previous = hour;
+  }
+  return instant;
+}
+
+/**
  * @param {ReturnType<ReturnType<import('./market.js').createMarket>['snapshot']>} snapshot
  * @param {{ hours?: unknown, before?: unknown }} fields as sent by the core
  */
@@ -60,9 +87,11 @@ export function findCheapestWindow(snapshot, fields) {
     (slot) => slot.start.getTime() >= at.getTime() - STARTED_GRACE_MS && slot.end > at,
   );
   if (before !== 'any') {
-    const deadline = candidates.find((slot) => marketTime(slot.end, timeZone) === before);
-    if (deadline) {
-      candidates = candidates.filter((slot) => slot.end <= deadline.end);
+    const deadline = nextDeadline(at, before, timeZone);
+    const lastEnd = Math.max(...snapshot.slots.map((slot) => slot.end.getTime()));
+    // Beyond the known prices (tomorrow not published yet): the known hours.
+    if (deadline <= lastEnd) {
+      candidates = candidates.filter((slot) => slot.end.getTime() <= deadline);
     }
   }
 

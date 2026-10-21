@@ -20,7 +20,7 @@ import { createIssueLog } from './issues.js';
 import { createMarket } from './market.js';
 import { createSceneLedger } from './ledger.js';
 import { SCENE_ACTION, findCheapestWindow } from './scenes.js';
-import { addDays, zoneTimezone } from './time.js';
+import { addDays, marketHour, zoneTimezone } from './time.js';
 import { eventsForSlot, tomorrowEvent } from './triggers.js';
 import { buildPricesContent, formatPrice, WIDGET } from './widget.js';
 
@@ -36,6 +36,8 @@ const POLL_FALLBACK_MS = 90 * 1000;
 // container started late, REE was down) fires no trigger: a scene
 // waiting for "the cheapest hour begins" must not run at 03:45.
 export const LATE_EVENT_MS = 10 * MINUTE;
+// tomorrow_prices_published goes out until 22:59 (Madrid) only.
+export const ANNOUNCE_UNTIL_HOUR = 23;
 
 /**
  * @param {object} gladys GladysIntegration instance
@@ -59,6 +61,9 @@ export function createApp(gladys, options = {}) {
   let lastCycleAt = null;
   let lastStatus = null;
   let announced = false;
+  // Set once the configuration and the scene ledger are loaded.
+  let initialized = false;
+  let initializing = Promise.resolve();
 
   const deviceCreated = () =>
     (gladys.devices ?? []).some((device) => device.external_id === deviceIds(gladys).device);
@@ -179,6 +184,12 @@ export function createApp(gladys, options = {}) {
     if (snapshot.tomorrowSlots.length === 0 || ledger.announced(day)) {
       return;
     }
+    // An evening notification: prices first seen later (installed at 23:50,
+    // /data lost) are recorded silently.
+    if (marketHour(snapshot.at) >= ANNOUNCE_UNTIL_HOUR) {
+      await ledger.markAnnounced(day);
+      return;
+    }
     const event = tomorrowEvent(snapshot.tomorrowSlots, zoneTimezone(snapshot.zone));
     try {
       await gladys.publishSceneEvent(event.key, event.data);
@@ -260,6 +271,12 @@ export function createApp(gladys, options = {}) {
 
   // The fallback: the core polls the device (when it does, Gladys#3198).
   gladys.onPoll(async () => {
+    // Not before the configuration and the scene ledger are loaded: a cycle
+    // with the default zone and an empty ledger would fire events again.
+    if (!initialized) {
+      logger.debug('onPoll skipped: not initialized yet');
+      return;
+    }
     if (lastCycleAt !== null && now() - lastCycleAt < POLL_FALLBACK_MS) {
       logger.debug('onPoll skipped: the timer is running');
       return;
@@ -292,6 +309,7 @@ export function createApp(gladys, options = {}) {
   });
 
   gladys.onSceneAction(SCENE_ACTION.CHEAPEST_WINDOW, async (fields) => {
+    await initializing;
     // Nothing known yet (the container just started, REE was down): one try.
     if (market.lastSuccessAt === null) {
       await cycle();
@@ -319,12 +337,20 @@ export function createApp(gladys, options = {}) {
   });
 
   gladys.on('connected', async () => {
+    let done;
+    if (!initialized) {
+      initializing = new Promise((resolve) => {
+        done = resolve;
+      });
+    }
     try {
       // Whatever was shown before the connection dropped, say it again.
       lastStatus = null;
-      config = normalizeConfig(await gladys.getConfig());
-      await publishDevice();
       await ledger.load();
+      config = normalizeConfig(await gladys.getConfig());
+      initialized = true;
+      done?.();
+      await publishDevice();
       stopped = false;
       schedule();
       await cycle();
@@ -333,6 +359,8 @@ export function createApp(gladys, options = {}) {
     } catch (err) {
       logger.error(`Post-connection initialization failed (${err.message})`);
       await gladys.setConnectionStatus(false, TEXT.initFailed).catch(() => {});
+    } finally {
+      done?.();
     }
   });
 

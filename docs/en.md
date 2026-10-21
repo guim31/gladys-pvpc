@@ -113,7 +113,8 @@ threshold, start and end of the run (as far as the prices are known).
 
 Fires once a day, when Red Eléctrica publishes tomorrow's prices (around 20:15).
 Variables: average, lowest and highest price of tomorrow, the cheapest and the most
-expensive hour, and the start of the cheapest 3 hours.
+expensive hour, and the start of the cheapest 3 hours. Prices first seen after 23:00
+(Madrid), at installation for instance, are not announced.
 
 The hourly triggers fire when the hour begins, at most 10 minutes late (Gladys or
 the integration restarting): an hour that began longer ago fires nothing.

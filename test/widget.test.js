@@ -85,7 +85,7 @@ test("before 20:15, tomorrow's prices are announced, not invented", async () => 
     [
       ['Period', 'Flat (llano, P2)'], // 17:30 in Las Palmas
       ['Cheapest left today', '22:00 · 0.217 €/kWh'],
-      ['Tomorrow', 'Around 20:15'],
+      ['Tomorrow', 'Around 19:15'],
     ],
   );
 });
