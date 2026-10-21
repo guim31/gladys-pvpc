@@ -1,61 +1,187 @@
-# Demo Devices Template
+# PVPC
 
-This is the user documentation of the integration. Gladys re-hosts this file
-and shows a permanent **Documentation** link to it in the Configuration screen
-(in the user's language, with English as the fallback) — it is when
-configuring that the user needs it most. Keep the short onboarding hints in
-the `section` blocks of the manifest `config_schema`; put the long
-step-by-step (screenshots, troubleshooting…) here.
+The Spanish regulated electricity price, **PVPC** (Precio Voluntario para el
+Pequeño Consumidor, tariff 2.0TD), hour by hour in Gladys: the price of the current
+hour, the cheapest hours of the day, the 2.0TD period, a price chart for today and
+tomorrow, scene triggers and a scene action to run your appliances when electricity
+is cheapest.
 
-## What you get
+The prices come from the open data of [Red Eléctrica](https://www.ree.es) (REE).
+This integration is not affiliated with Red Eléctrica. It was tested against the
+live REE API, but not yet on a real Gladys of a PVPC customer: feedback welcome.
 
-Six demo devices show up after installation: a weather station (real data
-from Open-Meteo), a switch, a dimmable light, a smart plug with power
-metering, a motion sensor and a camera.
+## Overview
+
+The PVPC is the regulated tariff of the "comercializadoras de referencia" (Energía
+XXI, Curenergía, Baser, Régsiti...) for contracts up to 10 kW.
+Its energy price changes every hour. Red Eléctrica publishes it, without account or
+key, the day before, around 20:15.
+
+The price shown is the **energy term of the PVPC 2.0TD** in €/kWh: energy, tolls
+and charges included, **taxes excluded** (electricity tax and VAT or IGIC), like
+the HA `pvpc_hourly_pricing` integration and the REE website. The power term
+(término de potencia) is not included.
+
+A day runs from midnight to midnight in Madrid, 23 or 25 hours on the days the
+clocks change. The hours are shown in Madrid time, or in local time in the Canary
+Islands.
+
+## Requirements
+
+- Gladys Assistant 5.1.0 or later.
+- Internet access from Gladys to `apidatos.ree.es`.
+- Nothing else: no account, no API key, no hardware.
+
+## Installation
+
+1. In Gladys, open **Integrations → Install from GitHub** and enter
+   `https://github.com/guim31/gladys-pvpc`.
+2. Open the integration, choose your zone, save.
+3. Open the **Discovery** tab and add the **PVPC** device.
+4. On a dashboard, add the **PVPC electricity prices** widget.
 
 ## Configuration
 
-1. Open the **Configuration** tab of the integration.
-2. Set the **latitude** and **longitude** the demo weather station should
-   observe (they default to Paris), and pick your temperature unit.
-   The **refresh interval** sets how often the weather station and the
-   plug's power are read: every 5 minutes by default, every minute at most.
-3. Save: the devices appear in the **Discovery** tab, ready to be added.
+| Field                         | Default   | What it does                                                                                     |
+| ----------------------------- | --------- | ------------------------------------------------------------------------------------------------ |
+| Zone                          | Península | Mainland, Balearic Islands, Canary Islands, Ceuta or Melilla: geo id, 2.0TD hours, clock         |
+| Language of the feature names | French    | Used when the device is added: the names do not change afterwards (pick Spanish or English here) |
 
-The **Prefer the local connection** toggle drives the demo plug: it reports
-the channel it actually uses as a badge (local or cloud), with an orange dot
-when it runs degraded (local refused, cloud fallback).
+The **Refresh the prices now** button reads Red Eléctrica at once and shows what it
+publishes for today and tomorrow: use it to check the connection.
 
-## Actions
+## The PVPC device
 
-- **Test the weather provider** — performs a live request to Open-Meteo and
-  shows the current temperature and humidity under the button.
-- **Identify a device** — pick one of your devices in the list and it will
-  signal itself (the demo light "blinks" in the logs).
+One device, read-only, refreshed by the integration itself every minute (the prices
+are read from Red Eléctrica once an hour).
 
-## Scenes
+| Feature                           | Type    | Value                                                               |
+| --------------------------------- | ------- | ------------------------------------------------------------------- |
+| Current price (€/kWh)             | Price   | Price of the current hour                                           |
+| Next hour price (€/kWh)           | Price   | Price of the next hour (after 23:00, once tomorrow is known)        |
+| Average price today (€/kWh)       | Price   | Average of the hours of the day                                     |
+| Lowest price today (€/kWh)        | Price   | Cheapest hour of the day                                            |
+| Highest price today (€/kWh)       | Price   | Most expensive hour of the day                                      |
+| Cheapest hour today               | Text    | Start of the cheapest hour, `HH:MM`                                 |
+| Cheapest hour left today          | Text    | Start of the cheapest hour not over yet (the current one included)  |
+| Most expensive hour today         | Text    | Start of the most expensive hour, `HH:MM`                           |
+| Hour rank (1 = cheapest)          | Counter | Rank of the current hour in the day, 1 to 24 (23 or 25 on DST days) |
+| 2.0TD period (1 peak, 3 off-peak) | Counter | 1 punta, 2 llano, 3 valle                                           |
+| 2.0TD tariff period               | Text    | The same period, by name ("Valle (P3)")                             |
+| Tomorrow's prices published       | Binary  | 1 once Red Eléctrica has published tomorrow's prices (around 20:15) |
 
-The integration adds its own cards to the scene editor (Gladys 5.1 or
-later), under the **Integrations** category:
+The 2.0TD periods, in the local time of your zone. Monday to Friday: valle 00-08;
+punta 10-14 and 18-22 (Ceuta and Melilla: 11-15 and 19-23); llano the other hours.
+Saturdays, Sundays and the fixed national holidays (1 January, 6 January, 1 May,
+15 August, 12 October, 1 November, 6 and 8 December, 25 December): valle all day.
 
-- **Motion detected** (trigger) — starts the scene when a demo motion sensor
-  sees something move. Optionally pick the sensor and what moved (person,
-  animal); left empty, any detection matches. The following actions can
-  read what moved with `{{triggerEvent.data.target}}`.
-- **Identify a device** (action) — makes the chosen device signal itself.
-  It returns whether the device could signal itself, so the following
-  actions can depend on it.
+Gladys has no €/kWh unit: the prices show in euros, the name says per what.
 
-## Dashboard
+## Dashboard widget
 
-Add the **Demo status** widget to a dashboard: it shows the live
-temperature of the weather station and the power of the office plug, the
-connection the plug currently uses (orange when degraded) and the observed
-location. Its **Identify the light** button makes the demo light signal
-itself.
+**PVPC electricity prices** shows three tiles (now, next hour, today's average), the
+chart of today and tomorrow with the cheapest and the most expensive hour of each
+day marked and a line at the current time, then the current 2.0TD period, the
+cheapest hour left today, the cheapest hour and the average of tomorrow. Before
+publication it says that tomorrow's prices come around 20:15.
+
+## Scene triggers
+
+Four triggers, in the scene editor under **PVPC**. The first three concern the hours
+of the current day (midnight to midnight, Madrid).
+
+### Cheapest hours of the day begin
+
+Fires once a day, at the start of the cheapest run of consecutive hours of the day.
+Pick the length of the run: 1 to 6 or 8 hours (1 hour is the cheapest hour of the
+day). Variables: average price of the run, start and end time.
+
+### One of the cheapest hours begins
+
+Fires at the start of each of the N cheapest hours of the day, consecutive or not.
+Pick N: 1 to 6, 8, 10 or 12. Variables: price of the hour, its rank, start and end
+time.
+
+### The price drops below a threshold
+
+Fires when the price goes under the chosen threshold (0.05 to 0.25 €/kWh): at the
+start of the first hour under it, when the hour before was above. Once per run of
+cheap hours, not every hour. Variables: price of the hour, number of hours under the
+threshold, start and end of the run (as far as the prices are known).
+
+### Tomorrow's prices are published
+
+Fires once a day, when Red Eléctrica publishes tomorrow's prices (around 20:15).
+Variables: average, lowest and highest price of tomorrow, the cheapest and the most
+expensive hour, and the start of the cheapest 3 hours. Prices first seen after 23:00
+(Madrid), at installation for instance, are not announced.
+
+The hourly triggers fire when the hour begins, at most 10 minutes late (Gladys or
+the integration restarting): an hour that began longer ago fires nothing.
+
+## Scene action
+
+**Find the cheapest hours before a deadline** looks, from now, for the cheapest run
+of N consecutive hours (1 to 6 or 8) that is finished before the chosen time (the
+next time it comes, today or tomorrow), or with no deadline among all known prices.
+A run may start in the current hour during its first 10 minutes only.
+
+It returns: `found`, `starts_now`, `start_time`, `end_time`, `average_price` and
+`minutes_to_start`, for the following actions of the scene. When the deadline is
+beyond the known prices (in the afternoon, for tomorrow morning), it searches the
+known hours: call it after 20:30 to include the night.
+
+## Scene examples
+
+- **Dishwasher in the cheapest 3 hours**: trigger _Cheapest hours of the day begin_,
+  3 hours → turn on the dishwasher plug.
+- **Washing done by 07:00**: every day at 21:00, action _Find the cheapest hours
+  before a deadline_, 2 hours before 07:00 → if `starts_now` is true, turn on the
+  plug; otherwise send "Washing machine: start at {{start_time}}".
+- **Water heater only in valle**: when _2.0TD period_ equals 3 → turn on the water
+  heater; when it is 1 → turn it off.
+- **Evening notification**: trigger _Tomorrow's prices are published_ → send
+  "Tomorrow: average {{average_price}} €/kWh, cheapest at {{cheapest_time}}".
+
+## Refresh and API usage
+
+Red Eléctrica publishes no quota for its open data API. The integration keeps its
+use low:
+
+- one request an hour, answering three days (yesterday, today, tomorrow);
+- from 20:15 (Madrid), one more request every 15 minutes until tomorrow's prices
+  are published, then hourly again;
+- after a failure, retries after 5, 10, 20, 40 then 60 minutes; the last known prices
+  stay in use meanwhile (prices are known a day ahead).
+
+The states are published only when they change, plus a reminder every 6 hours.
 
 ## Troubleshooting
 
-The integration logs everything it does: check the integration logs from the
-Gladys UI (or `docker logs` on the host) with `LOG_LEVEL=debug` for the full
-detail.
+- **"Red Eléctrica cannot be reached"** in the Configuration screen: Gladys has no
+  internet access, or the REE API is down (it answers HTTP 502 "Los datos solicitados
+  no están disponibles" during its maintenance). The last known prices stay in use;
+  press **Refresh the prices now** to try again.
+- **"publishes no PVPC price for today"**: REE answered without the prices of the
+  day. The integration tries again every hour.
+- **No value on the device**: add the device from the Discovery tab first; its values
+  arrive at once.
+- **Hours one hour off**: check the zone (Canary Islands are an hour behind Madrid).
+- **Debug logs**: set `LOG_LEVEL=debug` on the container to see every refresh.
+
+## Limitations
+
+- The energy term of the PVPC 2.0TD, taxes excluded: neither the power term, nor the
+  electricity tax, nor VAT/IGIC, nor the meter rental. Free-market contracts
+  (mercado libre) have their own prices.
+- Hourly prices: the PVPC is still priced by the hour, even though the spot market
+  trades quarter hours since October 2025.
+- The optional ESIOS API (with a personal token) is not used: the open data API is
+  enough for the PVPC.
+- The triggers look at the current day only: a cheapest run never spans midnight
+  (the scene action does).
+- Regional holidays do not change the 2.0TD periods (the CNMC rule), and Good Friday
+  neither.
+- Read-only: nothing is controlled by the integration itself.
+- The feature names are set when the device is added; changing the language later
+  does not rename them.
