@@ -10,6 +10,8 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-21
+
 ### Added
 
 - The PVPC device: current and next hour price, average, lowest and highest price
@@ -25,3 +27,6 @@ the notes of the version's GitHub Release.
 - Scene action: find the cheapest run of N hours before a deadline.
 - A "Refresh the prices now" button in the configuration.
 - Feature names, texts and documentation in English, French, German and Spanish.
+
+[Unreleased]: https://github.com/guim31/gladys-pvpc/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/guim31/gladys-pvpc/releases/tag/v1.0.0
