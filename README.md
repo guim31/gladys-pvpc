@@ -94,6 +94,9 @@ See [`CLAUDE.md`](CLAUDE.md) for the architecture and the project rules.
 - The design follows the Home Assistant `pvpc_hourly_pricing` integration and the
   [`aiopvpc`](https://github.com/azogue/aiopvpc) library by Eugenio Panadero (MIT),
   read for the 2.0TD periods and holidays; no code is copied.
+- Cover: the Red Eléctrica logo from
+  [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Red_El%C3%A9ctrica_logo_2022.svg)
+  (public domain, simple text logo), a trademark of Redeia.
 - The structure, triggers and widget come from
   [gladys-energyzero](https://github.com/guim31/gladys-energyzero).
 
