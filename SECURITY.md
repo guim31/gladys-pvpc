@@ -30,6 +30,11 @@ Gladys before reporting a problem.
 
 In scope: the code of this repository and the Docker image it publishes.
 
+The integration stores no secret: it reads the public open data API of Red
+Eléctrica (`apidatos.ree.es`, HTTPS, no account, no key) and keeps in `/data` only
+`scene-events.json`, the hours whose scene events were sent and the last day whose
+prices were announced. It opens no port and talks to nothing on the local network.
+
 Out of scope: Gladys Assistant itself (see its
 [security policy](https://github.com/GladysAssistant/Gladys/security/policy)),
-and the third-party services and devices the integration talks to.
+and the Red Eléctrica API.

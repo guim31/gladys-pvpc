@@ -1,0 +1,197 @@
+# PVPC
+
+Der spanische regulierte Strompreis **PVPC** (Precio Voluntario para el Pequeño
+Consumidor, Tarif 2.0TD) Stunde für Stunde in Gladys: der Preis der aktuellen
+Stunde, die günstigsten Stunden des Tages, der 2.0TD-Zeitraum, ein Preisdiagramm für
+heute und morgen, Szenen-Auslöser und eine Szenen-Aktion, um deine Geräte laufen zu
+lassen, wenn der Strom am günstigsten ist.
+
+Die Preise stammen aus den offenen Daten von [Red Eléctrica](https://www.ree.es)
+(REE). Diese Integration ist nicht mit Red Eléctrica verbunden. Getestet wurde sie mit der
+echten REE-API getestet, aber noch nicht im Gladys eines echten PVPC-Kunden:
+Rückmeldungen sind willkommen.
+
+## Überblick
+
+Der PVPC ist der regulierte Tarif der „comercializadoras de referencia“ (Energía
+XXI, Curenergía, Baser, Régsiti…) für Verträge bis 10 kW. Sein Energiepreis ändert
+sich jede Stunde. Red Eléctrica veröffentlicht ihn ohne Konto und ohne Schlüssel am
+Vortag gegen 20:15 Uhr.
+
+Der angezeigte Preis ist der **Energiepreis des PVPC 2.0TD** in €/kWh: Energie,
+Netzentgelte und Umlagen inklusive, **ohne Steuern** (Stromsteuer und MwSt. bzw.
+IGIC), wie bei der HA-Integration `pvpc_hourly_pricing` und auf der REE-Website. Der
+Leistungspreis (término de potencia) ist nicht enthalten.
+
+Ein Tag geht von Mitternacht bis Mitternacht in Madrid, mit 23 oder 25 Stunden an
+den Tagen der Zeitumstellung. Die Uhrzeiten werden in Madrider Zeit angezeigt, auf
+den Kanaren in Ortszeit.
+
+## Voraussetzungen
+
+- Gladys Assistant 5.1.0 oder neuer.
+- Internetzugang von Gladys zu `apidatos.ree.es`.
+- Sonst nichts: kein Konto, kein API-Schlüssel, keine Hardware.
+
+## Installation
+
+1. Öffne in Gladys **Integrationen → Von GitHub installieren** und gib
+   `https://github.com/guim31/gladys-pvpc` ein.
+2. Öffne die Integration, wähle dein Gebiet, speichere.
+3. Öffne den Tab **Entdecken** und füge das Gerät **PVPC** hinzu.
+4. Füge auf einem Dashboard das Widget **PVPC-Strompreise** hinzu.
+
+## Konfiguration
+
+| Feld                       | Standard    | Wirkung                                                                            |
+| -------------------------- | ----------- | ---------------------------------------------------------------------------------- |
+| Gebiet                     | Península   | Festland, Balearen, Kanaren, Ceuta oder Melilla: Geo-ID, 2.0TD-Stunden, Uhr        |
+| Sprache der Funktionsnamen | Französisch | Wird beim Hinzufügen des Geräts verwendet: Die Namen ändern sich danach nicht mehr |
+
+Die Schaltfläche **Preise jetzt abrufen** fragt Red Eléctrica sofort ab und zeigt,
+was für heute und morgen veröffentlicht ist: praktisch, um die Verbindung zu prüfen.
+
+## Das Gerät PVPC
+
+Ein einziges Gerät, nur lesbar, von der Integration selbst jede Minute aktualisiert
+(die Preise werden einmal pro Stunde bei Red Eléctrica gelesen).
+
+| Funktion                         | Typ    | Wert                                                                              |
+| -------------------------------- | ------ | --------------------------------------------------------------------------------- |
+| Aktueller Strompreis (€/kWh)     | Preis  | Preis der aktuellen Stunde                                                        |
+| Preis nächste Stunde (€/kWh)     | Preis  | Preis der nächsten Stunde (nach 23 Uhr, sobald morgen bekannt ist)                |
+| Durchschnittspreis heute (€/kWh) | Preis  | Durchschnitt der Stunden des Tages                                                |
+| Tiefstpreis heute (€/kWh)        | Preis  | Günstigste Stunde des Tages                                                       |
+| Höchstpreis heute (€/kWh)        | Preis  | Teuerste Stunde des Tages                                                         |
+| Günstigste Stunde heute          | Text   | Beginn der günstigsten Stunde, `HH:MM`                                            |
+| Günstigste verbleibende Stunde   | Text   | Beginn der günstigsten Stunde, die noch nicht vorbei ist (die aktuelle inklusive) |
+| Teuerste Stunde heute            | Text   | Beginn der teuersten Stunde, `HH:MM`                                              |
+| Rang der Stunde (1 = günstigste) | Zähler | Rang der aktuellen Stunde am Tag, 1 bis 24 (23 oder 25 bei Zeitumstellung)        |
+| 2.0TD-Zeitraum (1 Spitze, 3 Tal) | Zähler | 1 punta, 2 llano, 3 valle                                                         |
+| 2.0TD-Tarifzeitraum              | Text   | Derselbe Zeitraum mit Namen („Tal (valle, P3)“)                                   |
+| Preise für morgen veröffentlicht | Binär  | 1, sobald Red Eléctrica die Preise für morgen veröffentlicht hat (gegen 20:15)    |
+
+Die 2.0TD-Zeiträume, in der Ortszeit deines Gebiets. Montag bis Freitag: valle 0-8
+Uhr; punta 10-14 und 18-22 Uhr (Ceuta und Melilla: 11-15 und 19-23 Uhr); llano die
+übrigen Stunden. Samstage, Sonntage und die nationalen Feiertage mit festem Datum
+(1. Januar, 6. Januar, 1. Mai, 15. August, 12. Oktober, 1. November, 6. und 8. Dezember, 25. Dezember): den ganzen Tag valle.
+
+Gladys hat keine Einheit €/kWh: Die Preise erscheinen in Euro, der Name sagt, wofür.
+
+## Dashboard-Widget
+
+**PVPC-Strompreise** zeigt drei Kacheln (jetzt, nächste Stunde, Durchschnitt heute),
+das Diagramm von heute und morgen mit der günstigsten und der teuersten Stunde jedes
+Tages und einer Linie zur aktuellen Uhrzeit, dann den aktuellen 2.0TD-Zeitraum, die
+günstigste verbleibende Stunde, die günstigste Stunde und den Durchschnitt von
+morgen. Vor der Veröffentlichung zeigt es an, dass die Preise für morgen gegen
+20:15 Uhr kommen.
+
+## Szenen-Auslöser
+
+Vier Auslöser, im Szenen-Editor unter **PVPC**. Die ersten drei betreffen die
+Stunden des laufenden Tages (Mitternacht bis Mitternacht, Madrid).
+
+### Die günstigsten Stunden des Tages beginnen
+
+Löst einmal am Tag aus, zu Beginn des günstigsten Blocks aufeinanderfolgender
+Stunden des Tages. Wähle die Länge: 1 bis 6 oder 8 Stunden (1 Stunde ist die
+günstigste Stunde des Tages). Variablen: Durchschnittspreis des Blocks, Beginn und
+Ende.
+
+### Eine der günstigsten Stunden beginnt
+
+Löst zu Beginn jeder der N günstigsten Stunden des Tages aus, ob am Stück oder
+nicht. Wähle N: 1 bis 6, 8, 10 oder 12. Variablen: Preis der Stunde, ihr Rang,
+Beginn und Ende.
+
+### Der Preis fällt unter eine Schwelle
+
+Löst aus, wenn der Preis unter die gewählte Schwelle fällt (0,05 bis 0,25 €/kWh): zu
+Beginn der ersten Stunde darunter, wenn die Stunde davor darüber lag. Einmal pro
+Reihe günstiger Stunden, nicht jede Stunde. Variablen: Preis der Stunde, Anzahl der
+Stunden unter der Schwelle, Beginn und Ende der Reihe (soweit die Preise bekannt
+sind).
+
+### Die Preise für morgen sind veröffentlicht
+
+Löst einmal am Tag aus, wenn Red Eléctrica die Preise für morgen veröffentlicht
+(gegen 20:15 Uhr). Variablen: Durchschnitts-, Tiefst- und Höchstpreis von morgen,
+die günstigste und die teuerste Stunde und der Beginn der günstigsten 3 Stunden.
+
+Die stündlichen Auslöser feuern, wenn die Stunde beginnt, höchstens 10 Minuten zu
+spät (Neustart von Gladys oder der Integration): Eine Stunde, die schon länger
+läuft, löst nichts aus.
+
+## Szenen-Aktion
+
+**Günstigste Stunden vor einer Frist finden** sucht ab jetzt den günstigsten Block
+von N aufeinanderfolgenden Stunden (1 bis 6 oder 8), der vor der gewählten Uhrzeit
+fertig ist (beim nächsten Mal, wenn sie kommt, heute oder morgen), oder ohne Frist
+unter allen bekannten Preisen. Ein Block darf nur in den ersten 10 Minuten der
+aktuellen Stunde in ihr beginnen.
+
+Die Aktion gibt `found`, `starts_now`, `start_time`, `end_time`, `average_price` und
+`minutes_to_start` an die folgenden Aktionen der Szene zurück. Liegt die Frist
+hinter den bekannten Preisen (nachmittags, für den nächsten Morgen), sucht sie unter
+den bekannten Stunden: Starte sie nach 20:30 Uhr, um die Nacht einzubeziehen.
+
+## Szenen-Beispiele
+
+- **Geschirrspüler in den günstigsten 3 Stunden**: Auslöser _Die günstigsten Stunden
+  des Tages beginnen_, 3 Stunden → die Steckdose des Geschirrspülers einschalten.
+- **Wäsche bis 7 Uhr fertig**: jeden Tag um 21 Uhr Aktion _Günstigste Stunden vor
+  einer Frist finden_, 2 Stunden vor 07:00 → wenn `starts_now` wahr ist, die
+  Steckdose einschalten; sonst „Waschmaschine: Start um {{start_time}}“ senden.
+- **Warmwasserbereiter nur in valle**: wenn _2.0TD-Zeitraum_ gleich 3 ist → den
+  Warmwasserbereiter einschalten; wenn er 1 ist → ausschalten.
+- **Abendliche Benachrichtigung**: Auslöser _Die Preise für morgen sind
+  veröffentlicht_ → „Morgen: Durchschnitt {{average_price}} €/kWh, am günstigsten um
+  {{cheapest_time}}“ senden.
+
+## Abruf und API-Nutzung
+
+Red Eléctrica veröffentlicht kein Kontingent für seine Open-Data-API. Die
+Integration nutzt sie sparsam:
+
+- eine Anfrage pro Stunde, die drei Tage abdeckt (gestern, heute, morgen);
+- ab 20:15 Uhr (Madrid) eine weitere Anfrage alle 15 Minuten, bis die Preise für
+  morgen veröffentlicht sind, dann wieder stündlich;
+- nach einem Fehler neue Versuche nach 5, 10, 20, 40, dann 60 Minuten; die zuletzt
+  bekannten Preise bleiben so lange in Gebrauch (die Preise sind einen Tag im Voraus
+  bekannt).
+
+Die Zustände werden nur bei einer Änderung veröffentlicht, dazu eine Erinnerung alle
+6 Stunden.
+
+## Fehlerbehebung
+
+- **„Red Eléctrica ist nicht erreichbar“** in der Konfiguration: Gladys hat keinen
+  Internetzugang, oder die REE-API ist ausgefallen (bei Wartungen antwortet sie mit
+  HTTP 502 „Los datos solicitados no están disponibles“). Die zuletzt bekannten
+  Preise bleiben in Gebrauch; drücke **Preise jetzt abrufen**, um es erneut zu
+  versuchen.
+- **„veröffentlicht aber keinen PVPC-Preis für heute“**: REE hat ohne die Preise des
+  Tages geantwortet. Die Integration versucht es jede Stunde erneut.
+- **Kein Wert am Gerät**: Füge das Gerät zuerst über den Tab Entdecken hinzu; seine
+  Werte kommen sofort.
+- **Uhrzeiten um eine Stunde verschoben**: Prüfe das Gebiet (die Kanaren liegen eine
+  Stunde hinter Madrid).
+- **Debug-Protokolle**: Setze `LOG_LEVEL=debug` am Container, um jeden Abruf zu sehen.
+
+## Einschränkungen
+
+- Der Energiepreis des PVPC 2.0TD ohne Steuern: weder Leistungspreis noch
+  Stromsteuer, MwSt./IGIC oder Zählermiete. Verträge des freien Markts (mercado
+  libre) haben eigene Preise.
+- Stundenpreise: Der PVPC wird weiterhin stündlich festgelegt, auch wenn der
+  Spotmarkt seit Oktober 2025 Viertelstunden handelt.
+- Die optionale ESIOS-API (mit persönlichem Token) wird nicht genutzt: Die
+  Open-Data-API reicht für den PVPC.
+- Die Auslöser betrachten nur den laufenden Tag: Ein Block überschreitet nie
+  Mitternacht (die Szenen-Aktion schon).
+- Regionale Feiertage ändern die 2.0TD-Zeiträume nicht (Regel der CNMC), Karfreitag
+  auch nicht.
+- Nur lesend: Die Integration steuert selbst nichts.
+- Die Funktionsnamen werden beim Hinzufügen des Geräts festgelegt; eine spätere
+  Änderung der Sprache benennt sie nicht um.

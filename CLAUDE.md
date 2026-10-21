@@ -31,17 +31,26 @@ pushing.
 ## Architecture
 
 ```
-index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
-src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
+index.js                          SDK wiring only: src/app.js registers the handlers before connect()
+src/app.js                        refresh cycle (own minute timer, onPoll fallback), states, scene events,
+                                  "refresh" action, scene action, widget, config and connection lifecycle
+src/ree.js                        client of the REE open data API (PVPC series, €/MWh -> €/kWh), zones
+src/market.js                     known prices, refresh policy (hourly, 15 min from 20:15, backoff), snapshot
+src/prices.js                     pure computations: current/next slot, day summary, rank, cheapest window
+src/device.js                     the one device (external id on the country "es") and its states
+src/triggers.js                   scene events fired when an hour begins, and "tomorrow published"
+src/scenes.js                     scene action: cheapest run of N hours before a deadline
+src/widget.js                     "prices" dashboard widget (manifest `widgets`)
+src/ledger.js                     hours whose scene events are out, last announced day (/data/scene-events.json)
+src/time.js                       Europe/Madrid day, zone clock (Atlantic/Canary), 2.0TD periods
+src/i18n.js                       feature names and every user-facing text, en/fr/de/es
+src/issues.js                     a repeated failure logged once, its recovery once
 src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
-docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
-.github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
+scripts/probe.mjs                 reads the real prices (run where the network allows)
+gladys-assistant-integration.json manifest: name, config_schema, actions, triggers, scene action, widget...
+docs/{en,fr,de,es}.md             user documentation, same sections (test/i18n.test.js)
+test/                             node --test, against the SDK's fake Gladys and a fake REE API
+test/fixtures/ree/                real REE answers (two days, both DST days, a 502)
 ```
 
 ## Rules
@@ -70,10 +79,36 @@ test/                             node --test, against the SDK's fake Gladys (in
   `type: "provider"`: 5.1.0). `test/manifest.test.js` ties the manifest to the
   code (defaults, action, scene and widget handlers): change both sides
   together.
-- **User-facing text** is bilingual (English and French): action messages,
-  manifest texts, and `docs/en.md` / `docs/fr.md`, kept in sync.
+- **User-facing text** exists in English, French, German and Spanish: action
+  messages, manifest texts, feature names, widget, and `docs/en.md`, `fr.md`,
+  `de.md`, `es.md`, kept in sync (see « Langues » below).
 - **Style.** Prettier formats, ESLint catches mistakes. Comments explain why,
   in English. Tests never touch the network.
+
+# PVPC : API et pièges propres à cette intégration
+
+- **API** : `GET https://apidatos.ree.es/es/datos/mercados/precios-mercados-tiempo-real?start_date=YYYY-MM-DDT00:00&end_date=YYYY-MM-DDT23:59&time_trunc=hour&geo_limit=peninsular&geo_ids=8741`,
+  sans clé. Réponse JSON:API : la série PVPC est `included[]` d'id **`1001`**, en **€/MWh** (diviser par 1000) ;
+  la même réponse porte le marché spot (id `600`, au quart d'heure depuis octobre 2025) : à ignorer. Chaque
+  `datetime` porte le décalage de Madrid : les deux 02:00 d'octobre sont `+02:00` puis `+01:00`.
+- Lendemain **pas encore publié** : 200 avec les seules heures connues. **Aucune donnée** sur la plage : **502**
+  avec `errors[].detail` « Los datos solicitados no están disponibles ». Pas de quota publié : une requête par
+  heure (hier → demain), toutes les 15 min à partir de 20 h 15 tant que demain manque.
+- Zones (geo ids) : péninsule 8741, Canaries 8742, Baléares 8743, Ceuta 8744, Melilla 8745. Le 21/10/2026, les
+  cinq renvoyaient les mêmes prix (PCB = CYM en 2.0TD) ; la zone sert surtout aux **périodes 2.0TD** (Ceuta et
+  Melilla décalées d'une heure) et à l'**horloge affichée** (Canaries : `Atlantic/Canary`). Le jour, lui, reste
+  celui de Madrid.
+- Périodes 2.0TD (`src/time.js`) : week-end et fériés nationaux **à date fixe** tout en valle (Vendredi saint
+  exclu, fériés régionaux non plus), règle de la Circulaire CNMC 3/2020 reprise par `aiopvpc`.
+- L'API ESIOS (indicateur 1001, jeton personnel) n'est **pas** utilisée : choix du 21/10/2026, l'API ouverte
+  suffit. L'archive `api.esios.ree.es/archives/70/download_json` répond aussi sans clé (colonnes PCB/CYM,
+  `Hora` « 00-01 ») mais gère mal les jours de 25 h.
+- Déclencheurs : mêmes règles qu'EnergyZero (`select` obligatoire, un événement par valeur concernée, rien après
+  10 min, `/data/scene-events.json`). `price_below_started` ne part qu'au **franchissement** (l'heure d'avant au-
+  dessus du seuil ; d'où la lecture d'hier pour minuit). `tomorrow_prices_published` part une fois par jour,
+  mémorisé dans le même fichier (`announced_day`).
+- Action de scène : sorties toujours toutes présentes (`found: false` sinon) ; heure limite = prochaine
+  occurrence de `HH:00` dans l'horloge de la zone parmi les fins de créneau connues.
 
 ---
 

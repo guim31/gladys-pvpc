@@ -1,67 +1,198 @@
-# Template de démonstration
+# PVPC
 
-Ceci est la documentation utilisateur de l'intégration. Gladys ré-héberge ce
-fichier et affiche un lien **Documentation** permanent vers lui dans l'écran
-de configuration (dans la langue de l'utilisateur, avec l'anglais en repli) —
-c'est au moment de configurer que l'utilisateur en a le plus besoin. Gardez
-les courtes indications d'accueil dans les blocs `section` du `config_schema`
-du manifest ; mettez ici le pas-à-pas détaillé (captures d'écran, dépannage…).
+Le prix régulé espagnol de l'électricité, **PVPC** (Precio Voluntario para el
+Pequeño Consumidor, tarif 2.0TD), heure par heure dans Gladys : le prix de l'heure
+en cours, les heures les moins chères du jour, la période 2.0TD, un graphique des
+prix d'aujourd'hui et de demain, des déclencheurs et une action de scène pour faire
+tourner vos appareils quand l'électricité est la moins chère.
 
-## Ce que vous obtenez
+Les prix viennent des données ouvertes de [Red Eléctrica](https://www.ree.es) (REE).
+Cette intégration n'a aucun lien avec Red Eléctrica. Elle a été testée sur l'API
+réelle de REE, mais pas encore sur le Gladys d'un vrai client PVPC : vos retours
+sont les bienvenus.
 
-Six appareils de démonstration apparaissent après l'installation : une
-station météo (vraies données Open-Meteo), un interrupteur, une lampe
-variable, une prise connectée avec mesure de puissance, un détecteur de
-mouvement et une caméra.
+## Présentation
+
+Le PVPC est le tarif régulé des « comercializadoras de referencia » (Energía XXI,
+Curenergía, Baser, Régsiti…) pour les contrats jusqu'à 10 kW. Son prix de l'énergie
+change chaque heure. Red Eléctrica le publie, sans compte ni clé, la veille vers
+20 h 15.
+
+Le prix affiché est le **terme énergie du PVPC 2.0TD** en €/kWh : énergie, péages
+et charges compris, **hors taxes** (impôt sur l'électricité et TVA ou IGIC), comme
+l'intégration HA `pvpc_hourly_pricing` et le site de REE. Le terme de puissance
+(término de potencia) n'est pas inclus.
+
+Une journée va de minuit à minuit à Madrid, 23 ou 25 heures les jours de changement
+d'heure. Les heures sont affichées à l'heure de Madrid, ou à l'heure locale aux
+Canaries.
+
+## Prérequis
+
+- Gladys Assistant 5.1.0 ou plus récent.
+- Un accès Internet depuis Gladys vers `apidatos.ree.es`.
+- Rien d'autre : ni compte, ni clé d'API, ni matériel.
+
+## Installation
+
+1. Dans Gladys, ouvrez **Intégrations → Installer depuis GitHub** et saisissez
+   `https://github.com/guim31/gladys-pvpc`.
+2. Ouvrez l'intégration, choisissez votre zone, enregistrez.
+3. Ouvrez l'onglet **Découverte** et ajoutez l'appareil **PVPC**.
+4. Sur un tableau de bord, ajoutez le widget **Prix de l'électricité PVPC**.
 
 ## Configuration
 
-1. Ouvrez l'onglet **Configuration** de l'intégration.
-2. Renseignez la **latitude** et la **longitude** que la station météo de
-   démonstration doit observer (Paris par défaut), et choisissez votre unité
-   de température. L'**intervalle de rafraîchissement** règle la fréquence
-   de lecture de la station météo et de la puissance de la prise : toutes
-   les 5 minutes par défaut, toutes les minutes au plus.
-3. Enregistrez : les appareils apparaissent dans l'onglet **Découverte**,
-   prêts à être ajoutés.
+| Champ                              | Défaut    | Effet                                                                                     |
+| ---------------------------------- | --------- | ----------------------------------------------------------------------------------------- |
+| Zone                               | Péninsule | Péninsule, Baléares, Canaries, Ceuta ou Melilla : géo-identifiant, heures 2.0TD, horloge  |
+| Langue des noms de fonctionnalités | Français  | Utilisée à l'ajout de l'appareil : les noms ne changent plus ensuite (espagnol, anglais…) |
 
-Le réglage **Préférer la connexion locale** pilote la prise de
-démonstration : elle affiche en badge le canal réellement utilisé (local ou
-cloud), avec un point orange quand elle fonctionne en mode dégradé (local
-refusé, bascule cloud).
+Le bouton **Relever les prix maintenant** interroge Red Eléctrica tout de suite et
+affiche ce qu'elle publie pour aujourd'hui et demain : pratique pour vérifier la
+connexion.
 
-## Actions
+## L'appareil PVPC
 
-- **Tester le fournisseur météo** — effectue une requête en direct vers
-  Open-Meteo et affiche la température et l'humidité actuelles sous le
-  bouton.
-- **Identifier un appareil** — choisissez un de vos appareils dans la liste
-  et il se signale (la lampe de démonstration « clignote » dans les logs).
+Un seul appareil, en lecture seule, mis à jour par l'intégration elle-même chaque
+minute (les prix sont lus chez Red Eléctrica une fois par heure).
 
-## Scènes
+| Fonctionnalité                     | Type     | Valeur                                                                            |
+| ---------------------------------- | -------- | --------------------------------------------------------------------------------- |
+| Prix actuel (€/kWh)                | Prix     | Prix de l'heure en cours                                                          |
+| Prix heure suivante (€/kWh)        | Prix     | Prix de l'heure suivante (après 23 h, une fois demain connu)                      |
+| Prix moyen du jour (€/kWh)         | Prix     | Moyenne des heures du jour                                                        |
+| Prix min du jour (€/kWh)           | Prix     | Heure la moins chère du jour                                                      |
+| Prix max du jour (€/kWh)           | Prix     | Heure la plus chère du jour                                                       |
+| Heure la moins chère du jour       | Texte    | Début de l'heure la moins chère, `HH:MM`                                          |
+| Heure la moins chère restante      | Texte    | Début de l'heure la moins chère pas encore passée (l'heure en cours comprise)     |
+| Heure la plus chère du jour        | Texte    | Début de l'heure la plus chère, `HH:MM`                                           |
+| Rang de l'heure (1 = moins chère)  | Compteur | Rang de l'heure en cours dans la journée, 1 à 24 (23 ou 25 au changement d'heure) |
+| Période 2.0TD (1 pointe, 3 creuse) | Compteur | 1 punta, 2 llano, 3 valle                                                         |
+| Période tarifaire 2.0TD            | Texte    | La même période, en toutes lettres (« Creuse (valle, P3) »)                       |
+| Prix de demain publiés             | Binaire  | 1 dès que Red Eléctrica a publié les prix de demain (vers 20 h 15)                |
 
-L'intégration ajoute ses propres cartes à l'éditeur de scènes (Gladys 5.1
-ou plus récent), dans la catégorie **Intégrations** :
+Les périodes 2.0TD, à l'heure locale de votre zone. Du lundi au vendredi : valle
+0 h-8 h ; punta 10 h-14 h et 18 h-22 h (Ceuta et Melilla : 11 h-15 h et 19 h-23 h) ;
+llano les autres heures. Samedis, dimanches et jours fériés nationaux à date fixe
+(1er janvier, 6 janvier, 1er mai, 15 août, 12 octobre, 1er novembre, 6 et
+8 décembre, 25 décembre) : valle toute la journée.
 
-- **Mouvement détecté** (déclencheur) — lance la scène quand un détecteur
-  de démonstration voit bouger quelque chose. Choisissez éventuellement le
-  détecteur et ce qui a bougé (personne, animal) ; laissés vides, toute
-  détection correspond. Les actions suivantes peuvent lire ce qui a bougé
-  avec `{{triggerEvent.data.target}}`.
-- **Identifier un appareil** (action) — fait se signaler l'appareil choisi.
-  Elle indique si l'appareil a pu se signaler, pour que les actions
-  suivantes puissent en dépendre.
+Gladys n'a pas d'unité €/kWh : les prix s'affichent en euros, le nom dit par quoi.
 
-## Tableau de bord
+## Widget du tableau de bord
 
-Ajoutez le widget **État de la démo** à un tableau de bord : il affiche en
-direct la température de la station météo et la puissance de la prise du
-bureau, la connexion utilisée par la prise (en orange si dégradée) et la
-position observée. Son bouton **Identifier la lampe** fait se signaler la
-lampe de démonstration.
+**Prix de l'électricité PVPC** affiche trois tuiles (maintenant, heure suivante,
+moyenne du jour), le graphique d'aujourd'hui et de demain avec l'heure la moins
+chère et la plus chère de chaque jour et un trait à l'heure actuelle, puis la
+période 2.0TD en cours, l'heure la moins chère restante, l'heure la moins chère et
+la moyenne de demain. Avant la publication, il indique que les prix de demain
+arrivent vers 20 h 15.
+
+## Déclencheurs de scène
+
+Quatre déclencheurs, dans l'éditeur de scènes sous **PVPC**. Les trois premiers
+portent sur les heures de la journée en cours (de minuit à minuit, Madrid).
+
+### Les heures les moins chères du jour commencent
+
+Se déclenche une fois par jour, au début de la plage d'heures consécutives la moins
+chère du jour. Choisissez la durée : 1 à 6 ou 8 heures (1 heure, c'est l'heure la
+moins chère du jour). Variables : prix moyen de la plage, heure de début et de fin.
+
+### Une des heures les moins chères commence
+
+Se déclenche au début de chacune des N heures les moins chères du jour, consécutives
+ou non. Choisissez N : 1 à 6, 8, 10 ou 12. Variables : prix de l'heure, son rang,
+heure de début et de fin.
+
+### Le prix passe sous un seuil
+
+Se déclenche quand le prix passe sous le seuil choisi (0,05 à 0,25 €/kWh) : au début
+de la première heure en dessous, quand l'heure d'avant était au-dessus. Une fois par
+suite d'heures bon marché, pas à chaque heure. Variables : prix de l'heure, nombre
+d'heures sous le seuil, début et fin de la suite (dans la limite des prix connus).
+
+### Les prix de demain sont publiés
+
+Se déclenche une fois par jour, quand Red Eléctrica publie les prix du lendemain
+(vers 20 h 15). Variables : prix moyen, minimum et maximum de demain, l'heure la
+moins chère et la plus chère, et le début des 3 heures les moins chères.
+
+Les déclencheurs horaires partent au début de l'heure, avec 10 minutes de retard au
+plus (redémarrage de Gladys ou de l'intégration) : une heure commencée depuis plus
+longtemps ne déclenche rien.
+
+## Action de scène
+
+**Trouver les heures les moins chères avant une heure limite** cherche, à partir de
+maintenant, la plage de N heures consécutives (1 à 6 ou 8) la moins chère qui soit
+finie avant l'heure choisie (la prochaine fois qu'elle arrive, aujourd'hui ou
+demain), ou sans limite parmi tous les prix connus. Une plage ne peut commencer dans
+l'heure en cours que pendant ses 10 premières minutes.
+
+Elle renvoie `found`, `starts_now`, `start_time`, `end_time`, `average_price` et
+`minutes_to_start` aux actions suivantes de la scène. Quand l'heure limite dépasse
+les prix connus (l'après-midi, pour le lendemain matin), elle cherche parmi les
+heures connues : lancez-la après 20 h 30 pour inclure la nuit.
+
+## Exemples de scènes
+
+- **Lave-vaisselle sur les 3 heures les moins chères** : déclencheur _Les heures les
+  moins chères du jour commencent_, 3 heures → allumer la prise du lave-vaisselle.
+- **Lessive finie avant 7 h** : tous les jours à 21 h, action _Trouver les heures
+  les moins chères avant une heure limite_, 2 heures avant 07:00 → si `starts_now`
+  est vrai, allumer la prise ; sinon envoyer « Lave-linge : départ à
+  {{start_time}} ».
+- **Chauffe-eau seulement en valle** : quand _Période 2.0TD_ vaut 3 → allumer le
+  chauffe-eau ; quand elle vaut 1 → l'éteindre.
+- **Notification du soir** : déclencheur _Les prix de demain sont publiés_ → envoyer
+  « Demain : moyenne {{average_price}} €/kWh, le moins cher à {{cheapest_time}} ».
+
+## Relève et usage de l'API
+
+Red Eléctrica ne publie aucun quota pour son API de données ouvertes. L'intégration
+en fait un usage modéré :
+
+- une requête par heure, qui couvre trois jours (hier, aujourd'hui, demain) ;
+- à partir de 20 h 15 (Madrid), une requête de plus toutes les 15 minutes jusqu'à la
+  publication des prix de demain, puis de nouveau une par heure ;
+- après un échec, nouvel essai après 5, 10, 20, 40 puis 60 minutes ; les derniers
+  prix connus restent utilisés entre-temps (les prix sont connus un jour à
+  l'avance).
+
+Les états ne sont publiés que lorsqu'ils changent, avec un rappel toutes les
+6 heures.
 
 ## Dépannage
 
-L'intégration journalise tout ce qu'elle fait : consultez les logs de
-l'intégration depuis l'interface Gladys (ou `docker logs` sur l'hôte) avec
-`LOG_LEVEL=debug` pour le détail complet.
+- **« Red Eléctrica est injoignable »** dans l'écran de configuration : Gladys n'a
+  pas accès à Internet, ou l'API de REE est en panne (elle répond HTTP 502 « Los
+  datos solicitados no están disponibles » pendant ses maintenances). Les derniers
+  prix connus restent utilisés ; appuyez sur **Relever les prix maintenant** pour
+  réessayer.
+- **« ne publie aucun prix PVPC pour aujourd'hui »** : REE a répondu sans les prix
+  du jour. L'intégration réessaie toutes les heures.
+- **Aucune valeur sur l'appareil** : ajoutez d'abord l'appareil depuis l'onglet
+  Découverte ; ses valeurs arrivent aussitôt.
+- **Heures décalées d'une heure** : vérifiez la zone (les Canaries ont une heure de
+  moins que Madrid).
+- **Logs de débogage** : réglez `LOG_LEVEL=debug` sur le conteneur pour voir chaque
+  relève.
+
+## Limites
+
+- Le terme énergie du PVPC 2.0TD, hors taxes : ni le terme de puissance, ni l'impôt
+  sur l'électricité, ni la TVA/IGIC, ni la location du compteur. Les contrats du
+  marché libre (mercado libre) ont leurs propres prix.
+- Prix horaires : le PVPC reste fixé à l'heure, même si le marché spot échange des
+  quarts d'heure depuis octobre 2025.
+- L'API ESIOS facultative (avec un jeton personnel) n'est pas utilisée : l'API de
+  données ouvertes suffit pour le PVPC.
+- Les déclencheurs ne regardent que la journée en cours : une plage ne passe jamais
+  minuit (l'action de scène, si).
+- Les jours fériés régionaux ne changent pas les périodes 2.0TD (règle de la CNMC),
+  le Vendredi saint non plus.
+- Lecture seule : l'intégration ne pilote rien elle-même.
+- Les noms des fonctionnalités sont fixés à l'ajout de l'appareil ; changer la
+  langue ensuite ne les renomme pas.

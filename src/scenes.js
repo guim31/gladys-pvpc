@@ -1,41 +1,82 @@
 // -----------------------------------------------------------------------------
-// Scene actions (SDK v0.14+, Gladys 5.1+).
+// Scene action (manifest `scene_actions`, Gladys 5.1+): find the cheapest run
+// of N consecutive hours that ends before a given time.
 //
-// A scene action is an OPERATION a scene author places in a scene, with
-// parameters and a result: "identify this device", "take a snapshot", "clean
-// these rooms". Each one is declared in the manifest `scene_actions` field
-// (key, label, `fields` in the config_schema grammar, scalar `outputs`) and
-// handled here, keyed by that same `key`; index.js registers every entry with
-// `gladys.onSceneAction(key, ...)`.
+// "The washing machine must be done by 07:00: when is it cheapest to run it
+// for 2 hours?" The scene calls the action in the evening, then reads the
+// outputs: `starts_now` to start the appliance right away, or `start_time`
+// for a message, `minutes_to_start` for a wait.
 //
-// Scene TRIGGERS are the other direction ("this happened"): they are fired by
-// the device that observes the event, see src/devices/motionSensor.js.
-//
-// The rules that matter:
-//   - `fields` arrive RESOLVED: scene variables substituted, defaults applied,
-//     validated by the core; a `"source": "devices"` field is the chosen
-//     device external_id;
-//   - resolve an object of the declared `outputs` (scalars only), readable by
-//     the following actions of the scene, or `undefined` for none. Keys not
-//     declared in the manifest are dropped by the core;
-//   - throwing fails THIS action only: the scene logs it and continues. A
-//     scene action is never a condition: return an output and let the scene
-//     author gate on it;
-//   - never fire a scene event as a consequence of a received action: a scene
-//     bound to that event would loop through the integration.
+// The window may begin in the hour in progress only during its first
+// minutes (STARTED_GRACE_MS): a window that began at 14:00 is no longer
+// whole at 14:40. It must end before the deadline, the next HH:00 of the
+// zone's clock, and lie within the known prices (today and, after about
+// 20:15, tomorrow): when the deadline is beyond them, the known hours are
+// searched.
 // -----------------------------------------------------------------------------
 
-import { createLogger } from '@gladysassistant/integration-sdk';
-import { signalDevice } from './devices/index.js';
+import { cheapestWindow, roundPrice } from './prices.js';
+import { marketTime, zoneTimezone } from './time.js';
 
-const logger = createLogger({ name: 'scenes' });
+export const SCENE_ACTION = { CHEAPEST_WINDOW: 'find_cheapest_window' };
 
-export const SCENE_ACTIONS = {
-  // The ack is awaited under the action's `timeout_seconds` (15 s in the
-  // manifest), counted from the moment the scene reaches the action.
-  async identify_device(gladys, { fields, config }) {
-    logger.info(`Scene action identify_device <- ${fields.device}`);
-    const signalled = await signalDevice(gladys, fields.device, config);
-    return { signalled };
-  },
+export const ACTION_HOURS = [1, 2, 3, 4, 5, 6, 8];
+/** "any", or a deadline every full hour. */
+export const DEADLINES = [
+  'any',
+  ...Array.from({ length: 24 }, (_, hour) => `${String(hour).padStart(2, '0')}:00`),
+];
+
+const MINUTE = 60 * 1000;
+export const STARTED_GRACE_MS = 10 * MINUTE;
+
+/** The outputs when no window fits: every key, so a scene can test `found`. */
+const NOT_FOUND = {
+  found: false,
+  starts_now: false,
+  start_time: '',
+  end_time: '',
+  average_price: 0,
+  minutes_to_start: 0,
 };
+
+/**
+ * @param {ReturnType<ReturnType<import('./market.js').createMarket>['snapshot']>} snapshot
+ * @param {{ hours?: unknown, before?: unknown }} fields as sent by the core
+ */
+export function findCheapestWindow(snapshot, fields) {
+  const hours = Number(fields?.hours);
+  if (!ACTION_HOURS.includes(hours)) {
+    throw new Error(`Unknown number of hours: ${fields?.hours}`);
+  }
+  const before = fields?.before ?? 'any';
+  if (!DEADLINES.includes(before)) {
+    throw new Error(`Unknown deadline: ${before}`);
+  }
+  const at = snapshot.at;
+  const timeZone = zoneTimezone(snapshot.zone);
+
+  let candidates = snapshot.slots.filter(
+    (slot) => slot.start.getTime() >= at.getTime() - STARTED_GRACE_MS && slot.end > at,
+  );
+  if (before !== 'any') {
+    const deadline = candidates.find((slot) => marketTime(slot.end, timeZone) === before);
+    if (deadline) {
+      candidates = candidates.filter((slot) => slot.end <= deadline.end);
+    }
+  }
+
+  const window = cheapestWindow(candidates, hours);
+  if (!window) {
+    return { ...NOT_FOUND };
+  }
+  const wait = Math.max(0, window.start.getTime() - at.getTime());
+  return {
+    found: true,
+    starts_now: wait === 0,
+    start_time: marketTime(window.start, timeZone),
+    end_time: marketTime(window.end, timeZone),
+    average_price: roundPrice(window.average),
+    minutes_to_start: Math.ceil(wait / MINUTE),
+  };
+}
