@@ -1,6 +1,6 @@
 {
   "name": "gladys-pvpc",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Gladys Assistant integration: the Spanish regulated electricity price (PVPC 2.0TD) hour by hour, from Red Eléctrica.",
   "type": "module",
