@@ -34,7 +34,7 @@ feedback welcome. Not affiliated with Red Eléctrica.
 
 ## Requirements
 
-- Gladys Assistant **5.1.0** or later.
+- Gladys Assistant **5.3.0** or later.
 - Internet access from Gladys to `apidatos.ree.es`.
 
 ## Installation

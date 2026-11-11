@@ -184,3 +184,8 @@ test('the documentation exists in the four languages', async () => {
     assert.match(doc, /PVPC/);
   }
 });
+
+test('the catalog countries: Spain, which needs Gladys >= 5.3.0', () => {
+  assert.deepEqual(manifest.countries, ['ES']);
+  assert.ok(isAtLeast(minGladysVersion(), [5, 3, 0]), 'countries needs Gladys 5.3.0');
+});

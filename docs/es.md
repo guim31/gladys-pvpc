@@ -29,7 +29,7 @@ Canarias.
 
 ## Requisitos
 
-- Gladys Assistant 5.1.0 o posterior.
+- Gladys Assistant 5.3.0 o posterior.
 - Acceso a Internet desde Gladys hacia `apidatos.ree.es`.
 - Nada más: ni cuenta, ni clave de API, ni hardware.
 
