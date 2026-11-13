@@ -29,7 +29,7 @@ Canaries.
 
 ## Prérequis
 
-- Gladys Assistant 5.1.0 ou plus récent.
+- Gladys Assistant 5.3.0 ou plus récent.
 - Un accès Internet depuis Gladys vers `apidatos.ree.es`.
 - Rien d'autre : ni compte, ni clé d'API, ni matériel.
 
