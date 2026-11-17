@@ -10,6 +10,10 @@ the notes of the version's GitHub Release.
 
 ## [Unreleased]
 
+### Changed
+
+- Updated to integration SDK 0.16.1.
+
 ## [1.0.2] - 2026-11-13
 
 ### Changed
